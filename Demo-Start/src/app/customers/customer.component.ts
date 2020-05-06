@@ -1,13 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { FormGroup, FormControl, FormBuilder, Validators, AbstractControl, ValidatorFn } from '@angular/forms';
 import { Customer } from './customer';
-
+import { debounceTime } from 'rxjs/operators';
 
 
 function emailMatcher(c: AbstractControl): { [key: string]: boolean} | null {
   const emailControl = c.get('email');
   const confirmEmail = c.get('confirmEmail');
-  
   // Si les champs n'ont pas été touché, on skip la validation
   if(emailControl.pristine || confirmEmail.pristine)
   {
@@ -41,7 +40,15 @@ function ratingRange(min: number, max: number): ValidatorFn {
 export class CustomerComponent implements OnInit {
   customerForm: FormGroup;
   customer = new Customer();
-
+  emailMessage: string;
+  
+  // Pour le moment on met nos messages ici mais à terme il faut les 
+  // mettre dans le back end
+  // Attention, les clés ici doivent matche les clé qui identifient nos erreurs
+  private validationMessages = {
+    required: 'Please enter your email address.',
+    email: 'Please enter a valid email adress'
+  };
   constructor(private fb: FormBuilder) { }
 
   ngOnInit() {
@@ -59,19 +66,30 @@ export class CustomerComponent implements OnInit {
       rating: [null, ratingRange(1,5)]
     });
 
-    /*
-    this.customerForm = new FormGroup({
-      firstName: new FormControl(),
-      lastName: new FormControl(),
-      email: new FormControl(),
-      sendCatalog: new FormControl(true)
-    });
-    */
+    this.customerForm.get('notification').valueChanges.subscribe(
+      value => this.setNotification(value));
+
+    const emailControl = this.customerForm.get('emailGroup.email');
+    emailControl.valueChanges.pipe(debounceTime(1000)).subscribe(
+      value => this.setMessage(emailControl)
+    );
   }
 
   save() {
     console.log(this.customerForm);
     console.log('Saved: ' + JSON.stringify(this.customerForm.value));
+  }
+
+  setMessage(c: AbstractControl): void {
+    this.emailMessage = '';
+    if((c.touched || c.dirty) && c.errors)
+    {
+      // Pour chaque élément des clés du tableau d'erreur, on cherche la clé
+      // correspondante dans notre tableau de message d'erreur. On concatène ces 
+      // messages en un seul séparé par un espace avec join
+      this.emailMessage = Object.keys(c.errors).map(
+        key => this.validationMessages[key]).join(' ');
+    }
   }
 
   populateTestData(): void {
