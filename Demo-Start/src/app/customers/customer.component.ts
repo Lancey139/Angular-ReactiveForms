@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormGroup, FormControl, FormBuilder, Validators, AbstractControl, ValidatorFn } from '@angular/forms';
+import { FormGroup, FormControl, FormBuilder, Validators, AbstractControl, ValidatorFn, FormArray } from '@angular/forms';
 import { Customer } from './customer';
 import { debounceTime } from 'rxjs/operators';
 
@@ -41,6 +41,10 @@ export class CustomerComponent implements OnInit {
   customerForm: FormGroup;
   customer = new Customer();
   emailMessage: string;
+
+  get addresses(): FormArray{
+    return <FormArray>this.customerForm.get('addresses');
+  }
   
   // Pour le moment on met nos messages ici mais à terme il faut les 
   // mettre dans le back end
@@ -63,7 +67,8 @@ export class CustomerComponent implements OnInit {
       sendCatalog: true,
       phone: '',
       notification: 'email',
-      rating: [null, ratingRange(1,5)]
+      rating: [null, ratingRange(1,5)],
+      addresses: this.fb.array([ this.buildAddress() ])
     });
 
     this.customerForm.get('notification').valueChanges.subscribe(
@@ -73,6 +78,17 @@ export class CustomerComponent implements OnInit {
     emailControl.valueChanges.pipe(debounceTime(1000)).subscribe(
       value => this.setMessage(emailControl)
     );
+  }
+
+  buildAddress(): FormGroup {
+    return this.fb.group({
+      addressType: 'home',
+      street1: '',
+      street2: '',
+      city: '',
+      state: '',
+      zip: ''
+    });
   }
 
   save() {
@@ -123,5 +139,10 @@ export class CustomerComponent implements OnInit {
     }
 
     phoneControl.updateValueAndValidity();
+  }
+
+  addAddress():void {
+    // On peut utiliser this.addresses grace au getter
+    this.addresses.push(this.buildAddress());
   }
 }
